@@ -115,7 +115,7 @@ const SHAPES = [
 ]
 
 class Shape {
-    constructor(){
+    constructor() {
         this.template = SHAPES[Math.floor(Math.random() * SHAPES.length)];
         // TODO: Which rotation are shapes when placed
         this.dir = 0; // pattern[dir]
@@ -123,13 +123,13 @@ class Shape {
         // this.topLeft = [x, y];
         this.topLeft = null;
     }
-    get image(){
+    get image() {
         return this.template[this.dir]; // rotate = (dir + 1) % 4
     }
 }
 
 class Tetris {
-    constructor($elem, $message){
+    constructor($elem, $message) {
         this.ctx = $elem.getContext("2d");
         this.$score = $message.querySelector("span > span");
         this.$status = $message.querySelector("div");
@@ -139,109 +139,63 @@ class Tetris {
 
         this.cols = 10;
         this.rows = 20;
-        
+
         this.cellSize = 20;
         this.ctx.scale(this.cellSize, this.cellSize);
-        this.board = Array.from({length: this.rows}, () => Array(this.cols).fill(0));
+        this.board = Array.from({ length: this.rows }, () => Array(this.cols).fill(0));
 
         this.spawnShape();
     }
 
-    draw(){
+    draw() {
         // Remember that ctx is scaled to this.cellSize
         this.ctx.clearRect(0, 0, this.cols, this.rows);
-        for (let y = 0; y < this.board.length; y++){
-            for (let x = 0; x < this.board[y].length; x++){
+        for (let y = 0; y < this.board.length; y++) {
+            for (let x = 0; x < this.board[y].length; x++) {
                 let color = this.board[y][x] == "S" || this.board[y][x] == 1 ? "white" : "black";
                 this.drawCell(x, y, color);
             }
         }
     }
-    drawCell(x, y, color){
+    drawCell(x, y, color) {
         this.ctx.fillStyle = color;
         this.ctx.fillRect(x, y, 1, 1);
     }
-    spawnShape(){
+    spawnShape() {
         this.shape = new Shape();
         this.shape.topLeft = [];
         // TODO: Game over doesn't get triggered
-        if (this.projectShapeByXY(Math.floor(this.cols / 2) - 1, 0) < 0){
+        if (!this.projectShapeByXY(Math.floor(this.cols / 2) - 1, 0)) {
             this.gameOver();
         }
     }
-    gameOver(){
+    gameOver() {
         this.isGameRunning = false;
-        this.$status.style.visibility = "visible";
+        this.$status.toggleAttribute("hidden");
     }
-    lockThenSpawnShape(){
+    lockThenSpawnShape() {
         // Make the shape stuck on the board
         this.board = this.board.map(y => y.map(x => x == "S" ? 1 : x));
         this.spawnShape();
     }
-    setAndCheckCollision(){
-        // returns false if there is a collision
-        // Check for collision left to right to make sure we can place the shape
-        for (let y = 0; y < this.shape.image.length; y++){
-            for (let x = 0; x < this.shape.image[y].length; x++){
-                let tile = this.shape.image[y][x];
-                let boardX = this.shape.topLeft[0] + x;
-                let boardY = this.shape.topLeft[1] + y;
-                // No collision, so set
-                if (this.board[boardY][boardX] == 0 && tile == "S"){
-                    this.board[boardY][boardX] = "S";
-                }
-                // Collision by X
-                if (this.board[boardY][boardX] == 1 && tile == "S"){
-                    // collisionFN(boardX, boardY, x, y);
-                    // this.lockThenSpawnShape();
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-
-    projectShapeByRotation(newDir){
-        this.board = this.board.map(y => y.map(x => x == "S" ? 0: x));
-
-        let oldDir = this.shape.dir;
-        this.shape.dir = newDir;
-
-        let oldBoard = structuredClone(this.board);
-
-        if (!this.setAndCheckCollision()) {
-            this.board = oldBoard;
-            this.shape.dir = oldDir;
-            return false;
-        };
+    isAtLastRowCleanup() {
         // Remove shape if at the bottom row
-        if (this.isAtLastRowCleanup() || this.isStuckCleanup()){
-            return true;
-        }
-        return true;
-    }
-
-    isAtLastRowCleanup(){
-        // Remove shape if at the bottom row
-        if (this.shape.topLeft[1] + this.shape.image.length >= this.rows){
+        if (this.shape.topLeft[1] + this.shape.image.length >= this.rows) {
             this.lockThenSpawnShape();
             return true;
         }
         return false;
     }
 
-    isStuckCleanup(){
+    isStuckCleanup() {
         // Collision by columns
         // Check if we can move down. If we can't, then lockThenSpawnShape()
-        for (let y = 0; y < this.shape.image.length; y++){
-            for (let x = 0; x < this.shape.image[y].length; x++){
+        for (let y = 0; y < this.shape.image.length; y++) {
+            for (let x = 0; x < this.shape.image[y].length; x++) {
                 let tile = this.shape.image[y][x];
                 let boardX = this.shape.topLeft[0] + x;
                 let boardY = this.shape.topLeft[1] + y;
-            
-                // Row 0 = Top of board
-                // Collision
-                if (this.board[boardY + 1][boardX] == 1 && tile == "S"){
+                if (this.board[boardY + 1][boardX] == 1 && tile == "S") {
                     this.lockThenSpawnShape();
                     return true;
                 }
@@ -249,48 +203,97 @@ class Tetris {
         }
         return false;
     }
-
-    projectShapeByXY(newTopLeftX, newTopLeftY){
-        // returns -2 if coordinate failure, -1 if collision, no success, 0 if at bottom row/collision, and sucess, 1 if sucess
-        if (newTopLeftX < 0 || newTopLeftX + this.shape.image[0].length > this.cols || newTopLeftY < 0 || newTopLeftY + this.shape.image.length > this.rows){
-            return -2;
+    collisionFromOldToNew(newBoard) {
+        for (let y = 0; y < this.shape.image.length; y++) {
+            for (let x = 0; x < this.shape.image[y].length; x++) {
+                // let tile = this.shape.image[y][x];
+                let boardX = this.shape.topLeft[0] + x;
+                let boardY = this.shape.topLeft[1] + y;
+                if (this.board[boardY][boardX] == 1 && newBoard[boardY][boardX] == "S") {
+                    return true;
+                }
+            }
         }
-        // OR: arr.forEach, but I prefer map
-        this.board = this.board.map(y => y.map(x => x == "S" ? 0 : x)); // Clear board of current shape
-        // if the x coordinates are out of bounds, don't move the shape
-        let oldTopLeft = [...this.shape.topLeft];
-        // Only update the one we need
-        this.shape.topLeft = [newTopLeftX, newTopLeftY];
-        // This is  a terrible idea, but it's 10pm and I don't have a better way to do this
-        // TODO: Copy by value 2d
+        return false;
+    }
+    applyShapeToTarget(target) {
+        for (let y = 0; y < this.shape.image.length; y++) {
+            for (let x = 0; x < this.shape.image[y].length; x++) {
+                let tile = this.shape.image[y][x];
+                let boardX = this.shape.topLeft[0] + x;
+                let boardY = this.shape.topLeft[1] + y;
+                if (tile == "S") {
+                    target[boardY][boardX] = "S";
+                }
+            }
+        }
+        return target;
+    }
+
+    projectShapeByRotation(newDir) {
         let oldBoard = structuredClone(this.board);
+        this.board = this.board.map(y => y.map(x => x == "S" ? 0 : x));
+        let newBoard = structuredClone(this.board);
 
-        // Collision by rows
-        // If there is a collision with the board, don't move the shape
-        if (!this.setAndCheckCollision()) {
+        let oldDir = this.shape.dir;
+        this.shape.dir = newDir;
+
+        if (this.shape.topLeft[0] < 0 || this.shape.topLeft[0] + this.shape.image[0].length > this.cols || this.shape.topLeft[1] < 0 || this.shape.topLeft[1] + this.shape.image.length > this.rows) {
             this.board = oldBoard;
-            this.shape.topLeft = oldTopLeft;
-            // Since the shape isn't on the grid in the clear version, projecti t
-            // IMHO this is a hacky way to revert the shape back
-            this.projectShapeByXY(this.shape.topLeft[0], this.shape.topLeft[1]);
-            return -1;
+            // I found that it's better to not change the direction, because you still want to rotate the shape, but don't show it if it is out of bounds
+            return false;
         }
+
+        newBoard = this.applyShapeToTarget(newBoard);
+
+        if (this.collisionFromOldToNew()) {
+            this.shape.dir = oldDir;
+            this.board = oldBoard;
+            return false;
+        }
+        this.board = newBoard;
         // Remove shape if at the bottom row
-        if (this.isAtLastRowCleanup() || this.isStuckCleanup()){
+        if (this.isAtLastRowCleanup() || this.isStuckCleanup()) {
+            this.clearRows();
+            return false;
+        }
+        return true;
+
+    }
+    projectShapeByXY(newTopLeftX, newTopLeftY) {
+        if (newTopLeftX < 0 || newTopLeftX + this.shape.image[0].length > this.cols || newTopLeftY < 0 || newTopLeftY + this.shape.image.length > this.rows) {
+            return false;
+        }
+        let oldBoard = structuredClone(this.board);
+        this.board = this.board.map(y => y.map(x => x == "S" ? 0 : x)); // Clear board of current shape
+        let newBoard = structuredClone(this.board);
+
+        // Only update the one we need
+        let oldTopLeft = [...this.shape.topLeft];
+        this.shape.topLeft = [newTopLeftX, newTopLeftY];
+
+        newBoard = this.applyShapeToTarget(newBoard);
+
+        if (this.collisionFromOldToNew(newBoard)) {
+            this.shape.topLeft = oldTopLeft;
+            this.board = oldBoard;
+            return false;
+        }
+        this.board = newBoard;
+
+        if (this.isAtLastRowCleanup() || this.isStuckCleanup()) {
             // Clear the rows and update the score
             this.clearRows();
-            return 0;
+            return false;
         }
-        
-        return 1;
+        return true;
     }
-    // TODO: Score, game ends if shape can't be spawned
-    receiveEvent(event){
-        if (!this.isGameRunning){
+    receiveEvent(event) {
+        if (!this.isGameRunning) {
             console.log("Bruh");
             return;
         }
-        switch (event){
+        switch (event) {
             case "left":
                 this.projectShapeByXY(this.shape.topLeft[0] - 1, this.shape.topLeft[1]);
                 this.draw();
@@ -308,71 +311,67 @@ class Tetris {
                 this.draw();
                 break;
             case "hardDrop":
-                // debugger;
                 let res;
                 do {
-                    res = this.projectShapeByXY(this.shape.topLeft[0], this.shape.topLeft[1] + 1)
-                } while (res == 1);
-                this.draw()
+                    res = this.projectShapeByXY(this.shape.topLeft[0], this.shape.topLeft[1] + 1);
+                } while (res);
+                this.draw();
                 break;
         }
     }
-    clearRows(){
+    clearRows() {
         let newBoard = [];
         let rowsCleared = 0;
-        for (let y = this.board.length - 1; y >= 0; y--){
-            if (this.board[y].every(x => x == 1)){
+        for (let y = this.board.length - 1; y >= 0; y--) {
+            if (this.board[y].every(x => x == 1)) {
                 rowsCleared++;
             } else {
                 newBoard.unshift(this.board[y])
             }
         }
-        while (newBoard.length < this.board.length){
+        while (newBoard.length < this.board.length) {
             newBoard.unshift(Array(this.cols).fill(0));
         }
         this.board = newBoard;
         // todo fix
-        if (rowsCleared > 0){
+        if (rowsCleared > 0) {
             this.score += Math.round(100 * (Math.log(rowsCleared) / Math.log(10)) + 10);
             this.$score.textContent = this.score;
         }
     }
-
 }
-
-function main(){
-    // TODO: Debugging purposes
-    window.t = new Tetris(document.querySelector("#game"), document.querySelector("#game-message"));
-
+function TetrisGameHandler($game, $status){
+    let game = new Tetris($game, $status);
     document.addEventListener("keydown", (event) => {
-        switch (event.key){
+        switch (event.key) {
             case "ArrowLeft":
-                t.receiveEvent("left");
+                game.receiveEvent("left");
                 break;
             case "ArrowRight":
-                t.receiveEvent("right");
+                game.receiveEvent("right");
                 break;
             case "ArrowDown":
-                t.receiveEvent("softDrop");
+                game.receiveEvent("softDrop");
                 break;
             case "ArrowUp":
-                t.receiveEvent("rotate");
+                game.receiveEvent("rotate");
                 break;
             case " ":
-                t.receiveEvent("hardDrop");
+                game.receiveEvent("hardDrop");
                 break;
         }
     });
-
-    function loop(){
-        t.draw();
-        // TODO: Move down
+    function loop() {
+        game.draw();
         new Promise(resolve => setTimeout(resolve, 500)).then(() => {
+            game.receiveEvent("softDrop");
             window.requestAnimationFrame(loop);
         })
     }
-
     loop();
+}
+function main() {
+    TetrisGameHandler(document.querySelector("#game"), document.querySelector("#game-message"));
 }
 
 document.addEventListener("DOMContentLoaded", main)
