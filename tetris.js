@@ -124,7 +124,40 @@ COLORS = [
     "silver",
     "teal",
     "white"
-]
+];
+
+
+/**
+ * Self adjusting interval
+ * @param {Function} callback - called every interval, takes one parameter, drift > interval
+ * @param {Number} interval - interval in milliseconds
+ */
+function adjustingInterval(callback, interval){
+    // https://stackoverflow.com/a/29972322/
+    let expected = Date.now() + interval;
+    setTimeout(step, interval)
+    function step(){
+        let drift = Date.now() - expected;
+        callback(drift > interval);
+        expected += interval;
+        setTimeout(step, Math.max(0, interval - drift));
+    }
+}
+
+
+/**
+ * Self adjusting interval that pauses when tab is out of focus
+ * @param {Function} callback - called every interval, takes one parameter, drift > interval
+ * @param {Number} interval - interval in milliseconds
+ */
+function pausingAdjustingInterval(callback, interval){
+    return adjustingInterval((bad) => {
+        if (!bad || document.hasFocus()){
+            callback(bad);
+        }
+    }, interval);
+}
+
 
 /** 
  * Get a random color
@@ -516,6 +549,7 @@ function TetrisGameHandler(...args){
                 break;
         }
     });
+    /*
     function loop() {
         game.draw();
         new Promise(resolve => setTimeout(resolve, 500)).then(() => {
@@ -525,4 +559,10 @@ function TetrisGameHandler(...args){
     }
     game.draw();
     loop();
+    */
+    game.draw();
+    pausingAdjustingInterval(() => {
+        game.receiveEvent("softDrop");
+        // window.requestAnimationFrame(game.draw);
+    }, 500);
 }
