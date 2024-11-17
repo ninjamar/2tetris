@@ -1,14 +1,83 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
   <head>
     <title>2Tetris</title>
+    <style>
+        html, body {
+            width: 100%;
+        }
+        body {
+            margin: 0;
+        }
+        .game-wrapper {
+            margin-top: 30px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+        .content-wrapper {
+            margin-top: 30px;
+            display: flex;
+            flex-direction: column;
+            font-family: 'Courier New', Courier, monospace;
+            /* justify-content: center; */
+        }
+        .game-message {
+            text-align: center;
+        }
+        .header {
+            justify-content: center;
+            display: flex;
+            font-family: Verdana, Geneva, Tahoma, sans-serif
+        }
+        .info {
+            text-align: center;
+        }
+    </style>
     <script src="./tetris.js"></script>
+    <script>
+        /**  
+         * Initialize game
+        */
+        function main() {
+            let $games = document.querySelectorAll(".game");
+            let $message = document.querySelector(".game-message");
+            let $score = $message.querySelector("span");
+            let $status = $message.querySelector("div");
+            
+            let score = 0;
+            function gameOverFN() {
+                this.isGameRunning = false;
+                $status.style.visibility = "visible";
+            };
+            function incrementScore(x) {
+                console.log("Setting score")
+                score +=x;
+                $score.textContent = score;
+            };
+            let left = TetrisGameHandler($games[0], gameOverFN, incrementScore);
+            let right = TetrisGameHandler($games[1], gameOverFN, incrementScore);
+        }
+        document.addEventListener("DOMContentLoaded", main);
+    </script>
   </head>
   <body>
-    <canvas id="game" width="200" height="400"></canvas>
-    <div id="game-message">
-      <span>Score: <span>0</span></span>
-      <div style="visibility: hidden;">Game Over</div>
+    <div class="header">
+        <h1>2Tetris</h1>
+    </div>
+    <div class="game-wrapper">
+        <canvas class="game" width="200" height="400"></canvas>
+        <canvas class="game" width="200" height="400"></canvas>
+    </div>
+    <div class="content-wrapper">
+        <div class="game-message">
+            <span>Score: <span>0</span></span>
+            <div style="visibility: hidden;">Game Over</div>
+        </div>
+        <div class="info">
+            <p>Written by <a href="https://ninjamar.dev">ninjamar</a> for a game jam.</p>
+            <a href="https://github.com/ninjamar/2tetris">Source Code</a>
+        </div>
     </div>
   </body>
 </html>

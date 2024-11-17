@@ -1,6 +1,12 @@
+/**
+ * File: tetris.js
+ * Description: Tetris game
+ * Author: ninjamar
+ * Source: https://github.com/ninjamar/2tetris
+ * Version: 1.0.0
+ */
 const SHAPES = [
     // Use null instead of 0 because we need to show that the shape only takes up the space it needs
-    // ****
     [
         [
             ["S", "S", "S", "S"] // Horizontal
@@ -12,8 +18,6 @@ const SHAPES = [
             ["S"] // Vertical
         ]
     ],
-    // *
-    // ***
     [
         [
             ["S", null, null],
@@ -34,8 +38,6 @@ const SHAPES = [
             ["S", "S"]
         ]
     ],
-    //   *
-    // ***
     [
         [
             [null, null, "S"],
@@ -56,16 +58,12 @@ const SHAPES = [
             [null, "S"]
         ]
     ],
-    // **
-    // **
     [
         [
             ["S", "S"],
             ["S", "S"]
         ]
     ],
-    //  **
-    // **
     [
         [
             [null, "S", "S"],
@@ -77,8 +75,6 @@ const SHAPES = [
             [null, "S"]
         ]
     ],
-    // ***
-    //  *
     [
         [
             ["S", "S", "S"],
@@ -99,8 +95,6 @@ const SHAPES = [
             ["S", null]
         ]
     ],
-    // **
-    //  **
     [
         [
             ["S", "S", null],
@@ -131,10 +125,21 @@ COLORS = [
     "teal",
     "white"
 ]
+
+/** 
+ * Get a random color
+ * @returns {String} *
+ */
 function getRandomColor(){
     return COLORS[Math.floor(Math.random() * COLORS.length)];
 }
 
+
+/**
+ * Represent a point on the board
+ * @class Point
+ * @typedef {Point}
+ */
 class Point {
     // TODO: Probably use a dict for this
     constructor(value, color = "black"){
@@ -143,7 +148,18 @@ class Point {
     }
 }
 
+
+/**
+ * Class representing a shape
+ * @class Shape
+ * @typedef {Shape}
+ */
 class Shape {
+    /**
+     * Creates an instance of Shape.
+     *
+     * @constructor
+     */
     constructor() {
         this.color = getRandomColor();
         this.template = SHAPES[Math.floor(Math.random() * SHAPES.length)];
@@ -152,17 +168,36 @@ class Shape {
         this.dir = 0; // pattern[dir]
         this.topLeft = null;
     }
+    /**
+     * Get the image for the shape
+     * @readonly
+     * @type {*}
+     */
     get image() {
         return this.template[this.dir]; // rotate = (dir + 1) % 4
     }
 }
 
+
+/**
+ * The Tetris game manager
+ * @class Tetris
+ * @typedef {Tetris}
+ */
 class Tetris {
-    constructor($elem, $message) {
+    /**
+     * Creates an instance of Tetris.
+     *
+     * @constructor
+     * @param {HTMLElement} - Canvas of game display
+     * @param {Function} gameOverFN - Calls this function when the game is over - Make sure to set this.isGameOver to false
+     * @param {Function} incrementScoreFN - Called when score is incremented
+     */
+    constructor($elem, gameOverFN, incrementScoreFN) {
         this.ctx = $elem.getContext("2d");
-        this.$score = $message.querySelector("span > span");
-        this.$status = $message.querySelector("div");
-        this.score = 0;
+        
+        this.gameOver = gameOverFN.bind(this);
+        this.incrementScore = incrementScoreFN.bind(this);
 
         this.isGameRunning = true;
 
@@ -174,8 +209,10 @@ class Tetris {
         this.board = Array.from({ length: this.rows }, () => Array(this.cols).fill(new Point(0)));
         this.spawnShape();
     }
-
-    draw() {
+    /**  
+     * Draw the game to the canvas
+    */
+    draw() {    
         // Remember that ctx is scaled to this.cellSize
         this.ctx.clearRect(0, 0, this.cols, this.rows);
         for (let y = 0; y < this.board.length; y++) {
@@ -184,10 +221,21 @@ class Tetris {
             }
         }
     }
+    
+    /**
+     * Draw a cell on the board
+     * @param {Number} x - X coordinate
+     * @param {Number} y - Y coordinate
+     * @param {String} color - Color
+     */
     drawCell(x, y, color) {
         this.ctx.fillStyle = color;
         this.ctx.fillRect(x, y, 1, 1);
     }
+    
+    /**  
+     * Spawn a new shape
+    */
     spawnShape() {
         this.shape = new Shape();
         this.shape.topLeft = [];
@@ -195,11 +243,10 @@ class Tetris {
             this.gameOver();
         }
     }
-    gameOver() {
-        this.isGameRunning = false;
-        this.$status.style.visibility = "visible";
-        // this.$status.setAttribute("hidden", "false");
-    }
+    
+    /**  
+     * Lock the current shape, then spawn a new shape
+    */
     lockThenSpawnShape() {
         // Make the shape stuck on the board
         // this.board = this.board.map(y => y.map(x => x == "S" ? 1 : x));
@@ -208,6 +255,11 @@ class Tetris {
         this.board.forEach(y => y.forEach(x => x.value = x.value == "S" ? 1 : x.value));
         this.spawnShape();
     }
+    
+    /** 
+     * Remove the current shape if at the last row
+     * @returns {boolean} True if the shape is at the last row, False if not
+     * */
     isAtLastRowCleanup() {
         // Remove shape if at the bottom row
         if (this.shape.topLeft[1] + this.shape.image.length >= this.rows) {
@@ -216,7 +268,11 @@ class Tetris {
         }
         return false;
     }
-
+    
+    /** 
+     * Check if the shape cant move down
+     * @returns {boolean} True if the shape is stuck, False if not 
+     * */
     isStuckCleanup() {
         // Collision by columns
         // Check if we can move down. If we can't, then lockThenSpawnShape()
@@ -233,6 +289,12 @@ class Tetris {
         }
         return false;
     }
+    
+    /**
+     * Check if there is a collision from the current board to the new board
+     * @param {Array} newBoard - The board to compare, same as this.board
+     * @returns {boolean} - True if collision, False if not
+     */
     collisionFromOldToNew(newBoard) {
         for (let y = 0; y < this.shape.image.length; y++) {
             for (let x = 0; x < this.shape.image[y].length; x++) {
@@ -246,6 +308,12 @@ class Tetris {
         }
         return false;
     }
+    
+    /**
+     * Apply the current shape to some board
+     * @param {Array} target - The board
+     * @returns {Array} The target
+     */
     applyShapeToTarget(target) {
         for (let y = 0; y < this.shape.image.length; y++) {
             for (let x = 0; x < this.shape.image[y].length; x++) {
@@ -260,6 +328,11 @@ class Tetris {
         }
         return target;
     }
+    
+    /** 
+     * Create a copy of the current board
+     * @returns {Array} The copy of the current board 
+     * */
     copyBoard(){
         let res = [];
         for (let y = 0; y < this.board.length; y++){
@@ -272,6 +345,12 @@ class Tetris {
         }
         return res;
     }
+    
+    /**
+     * Rotate a shape
+     * @param {Number} newDir - Direction to set shape rotation to
+     * @returns {boolean} True if successful, False if not
+     */
     projectShapeByRotation(newDir) {
         let oldBoard = this.copyBoard();
         this.board.forEach(y => y.forEach(x => {
@@ -308,6 +387,13 @@ class Tetris {
         return true;
 
     }
+    
+    /**
+     * Move a shape around
+     * @param {Number} newTopLeftX - New X coordinate
+     * @param {Number} newTopLeftY - New Y coordinate
+     * @returns {boolean} True if successful, False if not
+     */
     projectShapeByXY(newTopLeftX, newTopLeftY) {
         if (newTopLeftX < 0 || newTopLeftX + this.shape.image[0].length > this.cols || newTopLeftY < 0 || newTopLeftY + this.shape.image.length > this.rows) {
             return false;
@@ -342,6 +428,35 @@ class Tetris {
         }
         return true;
     }
+    
+    /**  
+     * Clear the rows on the board, and increment score
+    */
+    clearRows() {
+        let newBoard = [];
+        let rowsCleared = 0;
+        for (let y = this.board.length - 1; y >= 0; y--) {
+            if (this.board[y].every(x => x.value == 1)) {
+                rowsCleared++;
+            } else {
+                newBoard.unshift(this.board[y])
+            }
+        }
+        while (newBoard.length < this.board.length) {
+            // Make sure that that each row gets it own Point, not a reference
+            newBoard.unshift(Array.from({length: this.cols}, () => new Point(0)));
+        }
+        this.board = newBoard;
+        // todo fix
+        if (rowsCleared > 0) {
+            this.incrementScore(Math.round(100 * (Math.log(rowsCleared) / Math.log(10)) + 10));
+        }
+    }
+    
+    /** 
+     * Interface of which controls are translated to function calls
+     * @param {String} event - The current command
+     * */
     receiveEvent(event) {
         if (!this.isGameRunning) {
             console.log("Really?");
@@ -373,31 +488,15 @@ class Tetris {
                 break;
         }
     }
-    clearRows() {
-        let newBoard = [];
-        let rowsCleared = 0;
-        for (let y = this.board.length - 1; y >= 0; y--) {
-            if (this.board[y].every(x => x.value == 1)) {
-                rowsCleared++;
-            } else {
-                newBoard.unshift(this.board[y])
-            }
-        }
-        while (newBoard.length < this.board.length) {
-            // Make sure that that each row gets it own Point, not a reference
-            newBoard.unshift(Array.from({length: this.cols}, () => new Point(0)));
-        }
-        this.board = newBoard;
-        // todo fix
-        if (rowsCleared > 0) {
-            this.score += Math.round(100 * (Math.log(rowsCleared) / Math.log(10)) + 10);
-            this.$score.textContent = this.score;
-        }
-    }
 }
-function TetrisGameHandler($game, $status){
-    let game = new Tetris($game, $status);
-    window.g = game;
+
+/** 
+ * A controller for Tetris
+ * Adds handlers for keybinds
+ * @param {...{}} args - Args to passthrough to Tetris
+ * */
+function TetrisGameHandler(...args){
+    let game = new Tetris(...args);
     document.addEventListener("keydown", (event) => {
         switch (event.key) {
             case "ArrowLeft":
@@ -424,10 +523,6 @@ function TetrisGameHandler($game, $status){
             window.requestAnimationFrame(loop);
         })
     }
+    game.draw();
     loop();
 }
-function main() {
-    TetrisGameHandler(document.querySelector("#game"), document.querySelector("#game-message"));
-}
-
-document.addEventListener("DOMContentLoaded", main)
