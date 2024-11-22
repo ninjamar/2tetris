@@ -540,4 +540,4 @@ function TetrisGameHandler(signal, ...args){
     }, 1000);
     return game;
 }
-// TODO: Use forEach
+// TODO: Add description + audio
