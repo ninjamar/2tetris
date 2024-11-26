@@ -67,6 +67,7 @@ body {
     font-size: 2em;
 }
 
+/* Crossplatform button styling so buttons can work on IOS*/
 button {
     border-radius: 5px;
     border: 1px solid gray;
